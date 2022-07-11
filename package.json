@@ -1,10 +1,10 @@
 {
   "name": "adrian-blog",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
-  "private": true,
-  "license": "UNLICENSED",
+  "description": "A multilingual blog made by using NestJS, TypeORM, PostgreSQL, Redis and Passport for authentication and authorization.",
+  "author": "Omid Rouhani",
+  "private": false,
+  "license": "MIT",
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
