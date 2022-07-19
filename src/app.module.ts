@@ -11,17 +11,17 @@ import { AppSeederService } from './app-seeder.service';
 import { I18nModule } from 'nestjs-i18n';
 import * as path from 'path';
 import { PathResolver } from './langs/i18n-extensions/path-resolver.extension';
-import { envValidations } from './common/validation-schemas/env-validations.schema';
 import * as redisStore from 'cache-manager-redis-store';
 import type { ClientOpts } from 'redis';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { BullModule } from '@nestjs/bull';
+import { EnvEnum } from './env.enum';
 
 @Module( {
   imports: [
     ConfigModule.forRoot( {
       isGlobal: true,
       cache: true,
-      validationSchema: envValidations
     } ),
     CacheModule.registerAsync( {
       imports: [ ConfigModule ],
@@ -29,11 +29,22 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
       isGlobal: true,
       useFactory: ( configService: ConfigService ): CacheModuleOptions<ClientOpts> => ( {
         store: redisStore,
-        host: configService.getOrThrow( 'REDIS_HOST' ),
-        port: configService.getOrThrow( 'REDIS_PORT' ),
-        auth_pass: configService.getOrThrow( 'REDIS_PASSWORD' ),
+        host: configService.getOrThrow( EnvEnum.REDIS_HOST ),
+        port: +configService.getOrThrow( EnvEnum.REDIS_PORT ),
+        password: configService.getOrThrow( EnvEnum.REDIS_PASSWORD ),
         ttl: 10, // seconds
         max: 200, // maximum number of items in cache
+      } ),
+    } ),
+    BullModule.forRootAsync( {
+      imports: [ ConfigModule ],
+      inject: [ ConfigService ],
+      useFactory: ( configService: ConfigService ) => ( {
+        redis: {
+          host: configService.getOrThrow( EnvEnum.REDIS_HOST ),
+          port: +configService.getOrThrow( EnvEnum.REDIS_PORT ),
+          password: configService.getOrThrow( EnvEnum.REDIS_PASSWORD ),
+        }
       } ),
     } ),
     I18nModule.forRootAsync( {
@@ -43,7 +54,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
         PathResolver
       ],
       useFactory: ( configService: ConfigService ) => ( {
-        fallbackLanguage: configService.getOrThrow( 'DEFAULT_LANG' ),
+        fallbackLanguage: configService.getOrThrow( EnvEnum.I18N_DEFAULT_LANG ),
         loaderOptions: {
           path: path.join( __dirname, '/i18n/' ),
           watch: true,
@@ -54,22 +65,14 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
       imports: [ ConfigModule ],
       inject: [ ConfigService ],
       useFactory: ( configService: ConfigService ) => ( {
-        type: configService.getOrThrow<any>( 'DB_TYPE' ),
-        host: configService.getOrThrow( 'DB_HOST' ),
-        port: configService.getOrThrow( 'DB_PORT' ),
-        username: configService.getOrThrow( 'DB_USERNAME' ),
-        password: configService.getOrThrow( 'DB_PASSWORD' ),
-        database: configService.getOrThrow<string>( 'DB_NAME' ),
+        type: configService.getOrThrow<any>( EnvEnum.DB_TYPE ),
+        host: configService.getOrThrow( EnvEnum.DB_HOST ),
+        port: +configService.getOrThrow( EnvEnum.DB_PORT ),
+        username: configService.getOrThrow( EnvEnum.DB_USERNAME ),
+        password: configService.getOrThrow( EnvEnum.DB_PASSWORD ),
+        database: configService.getOrThrow<string>( EnvEnum.DB_NAME ),
         autoLoadEntities: true,
-        synchronize: configService.getOrThrow( 'NODE_ENV' ) === 'development',
-        // cache: {
-        //   type: "redis",
-        //   options: {
-        //     host: configService.getOrThrow( 'REDIS_HOST' ),
-        //     port: configService.getOrThrow( 'REDIS_PORT' ),
-        //     auth_pass: configService.getOrThrow( 'REDIS_PASSWORD' ),
-        //   }
-        // }
+        synchronize: configService.getOrThrow( EnvEnum.NODE_ENV ) === 'development',
         //logging: true
       } )
     } ),

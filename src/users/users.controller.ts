@@ -25,6 +25,7 @@ import { AddMetaDto } from './dto/add-meta.dto';
 import { UserMeta } from './entities/user-meta.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersListQueryDto } from './dto/users-list-query.dto';
+import { EnvEnum } from 'src/env.enum';
 
 @Controller()
 export class UsersController {
@@ -56,7 +57,7 @@ export class UsersController {
         signed: true,
         httpOnly: true,
         sameSite: true,
-        secure: this.configService.getOrThrow( 'NODE_ENV' ) === 'production',
+        secure: this.configService.getOrThrow( EnvEnum.NODE_ENV ) === 'production',
         expires: new Date( parseInt( decodedRt[ 'exp' ] ) * 1000 )
       } );
 
@@ -81,7 +82,7 @@ export class UsersController {
         signed: true,
         httpOnly: true,
         sameSite: true,
-        secure: this.configService.getOrThrow( 'NODE_ENV' ) === 'production',
+        secure: this.configService.getOrThrow( EnvEnum.NODE_ENV ) === 'production',
         expires: new Date( parseInt( decodedRt[ 'exp' ] ) * 1000 )
       } );
 
@@ -105,7 +106,7 @@ export class UsersController {
         signed: true,
         httpOnly: true,
         sameSite: true,
-        secure: this.configService.getOrThrow( 'NODE_ENV' ) === 'production',
+        secure: this.configService.getOrThrow( EnvEnum.NODE_ENV ) === 'production',
         expires: new Date( parseInt( decodedRt[ 'exp' ] ) * 1000 )
       } );
 

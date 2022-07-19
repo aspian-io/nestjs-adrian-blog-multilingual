@@ -1,7 +1,9 @@
 {
   "not-found": "{prop} not found",
+  "bad-request": "Something went wrong",
   "class-validator": {
     "is-string": "Field value must be a string",
+    "is-number": "Field value must be a number",
     "is-not-empty": "Field should not be empty",
     "is-email": "Field value must a correct email address",
     "min-length": "Field value needs to be at least {constraints.0} characters",
@@ -13,6 +15,10 @@
     "is-date": "Field value must be a correct date",
     "is-in": "Field value must be an item from {constraints.0}",
     "is-array": "Field value must be an array",
+    "array-min-length": {
+      "one": "Array min length needs to be at least {constraints.0} element",
+      "other": "Array min length needs to be at least {constraints.0} elements"
+    },
     "is-boolean": "Field value must be a boolean"
   }
 }

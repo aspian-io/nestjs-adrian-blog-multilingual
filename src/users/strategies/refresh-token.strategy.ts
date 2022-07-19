@@ -5,13 +5,14 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Tokens } from '../types/services.type';
 import { IRefreshTokenStrategyPayload, IRtStrategyUser } from './types';
+import { EnvEnum } from 'src/env.enum';
 
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy( Strategy, 'jwt-refresh' ) {
   constructor ( private readonly configService: ConfigService ) {
     super( {
       jwtFromRequest: ExtractJwt.fromExtractors( [ ( req: Request ) => { return req.signedCookies[ Tokens.REFRESH_TOKEN ]; } ] ),
-      secretOrKey: configService.getOrThrow( 'REFRESH_TOKEN_SECRET' ),
+      secretOrKey: configService.getOrThrow( EnvEnum.AUTH_REFRESH_TOKEN_SECRET ),
       passReqToCallback: true
     } );
   }

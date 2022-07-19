@@ -4,6 +4,7 @@ import { config } from 'dotenv';
 
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EnvEnum } from 'src/env.enum';
 
 config();
 
@@ -12,9 +13,9 @@ export class GoogleStrategy extends PassportStrategy( Strategy, 'google' ) {
 
   constructor ( private readonly configService: ConfigService ) {
     super( {
-      clientID: configService.getOrThrow( 'GOOGLE_CLIENT_ID' ),
-      clientSecret: configService.getOrThrow( 'GOOGLE_SECRET' ),
-      callbackURL: configService.getOrThrow( 'CALLBACK_URL' ),
+      clientID: configService.getOrThrow( EnvEnum.OAUTH_GOOGLE_CLIENT_ID ),
+      clientSecret: configService.getOrThrow( EnvEnum.OAUTH_GOOGLE_SECRET ),
+      callbackURL: configService.getOrThrow( EnvEnum.OAUTH_GOOGLE_CALLBACK_URL ),
       scope: [ 'email', 'profile' ]
     } );
   }

@@ -2,6 +2,7 @@ import { ExecutionContext, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Request } from "express";
 import { I18nResolver } from "nestjs-i18n";
+import { EnvEnum } from "src/env.enum";
 import { LangsService } from "../langs.service";
 
 @Injectable()
@@ -16,7 +17,7 @@ export class PathResolver implements I18nResolver {
     const defaultLang = await this.langsService.findDefaultLang( null, true );
     req.defaultLang = defaultLang;
 
-    if ( this.configService.getOrThrow( 'MULTILINGUAL_ENABLED' ) === "true" ) {
+    if ( this.configService.getOrThrow( EnvEnum.I18N_MULTILINGUAL_ENABLED ) === "true" ) {
       const host: string = req.hostname;
       const lang = host.split( '.' )[ 0 ];
       const foundLang = await this.langsService.findByLocaLeName( lang, null, true );

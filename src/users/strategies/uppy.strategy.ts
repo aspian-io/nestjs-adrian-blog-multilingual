@@ -6,10 +6,10 @@ import { IJwtStrategyPayload, IJwtStrategyUser } from './types';
 import { EnvEnum } from 'src/env.enum';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy( Strategy, 'jwt' ) {
+export class UppyJwtStrategy extends PassportStrategy( Strategy, 'uppy' ) {
   constructor ( private readonly configService: ConfigService ) {
     super( {
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromHeader( 'uppy-auth-token' ),
       secretOrKey: configService.getOrThrow( EnvEnum.AUTH_ACCESS_TOKEN_SECRET )
     } );
   }

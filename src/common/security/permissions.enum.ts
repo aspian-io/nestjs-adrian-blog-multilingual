@@ -15,4 +15,9 @@ export enum PermissionsEnum {
   LANG_CREATE = "lng_w",
   LANG_EDIT = "lng_w+",
   LANG_DELETE = "lng_d",
+  // FILES
+  FILE_READ = "file_r",
+  FILE_CREATE = "file_w",
+  FILE_EDIT = "file_w+",
+  FILE_DELETE = "file_d",
 }

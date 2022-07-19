@@ -1,10 +1,13 @@
 import { ConfigService } from "@nestjs/config";
-import { SettingsKeyEnum, SettingsServiceEnum } from "src/settings/entities/setting.entity";
+import { EnvEnum } from "src/env.enum";
+import { FilesWatermarkPlacementEnum } from "src/files/types/files-service.type";
+import { SettingsKeyEnum } from "src/settings/types/settings-key.enum";
+import { SettingsServiceEnum } from "src/settings/types/settings-service.enum";
 
 export const settingsData = ( configService: ConfigService ) => [
   {
     key: SettingsKeyEnum.TRANSLATION_MULTILINGUAL,
-    value: configService.get( 'MULTILINGUAL_ENABLED' ),
+    value: configService.get( EnvEnum.I18N_MULTILINGUAL_ENABLED ),
     service: SettingsServiceEnum.LANGS,
     userAgent: "SYSTEM"
   },
@@ -16,19 +19,19 @@ export const settingsData = ( configService: ConfigService ) => [
   },
   {
     key: SettingsKeyEnum.SMS_PROVIDER,
-    value: configService.get( 'SMS_PROVIDER' ),
+    value: configService.get( EnvEnum.SMS_PROVIDER ),
     service: SettingsServiceEnum.SMS,
     userAgent: "SYSTEM"
   },
   {
     key: SettingsKeyEnum.SMS_ORIGINATOR,
-    value: configService.get( 'SMS_ORIGINATOR' ),
+    value: configService.get( EnvEnum.SMS_ORIGINATOR ),
     service: SettingsServiceEnum.SMS,
     userAgent: "SYSTEM"
   },
   {
     key: SettingsKeyEnum.SMS_API_KEY,
-    value: configService.get( 'SMS_API_KEY' ),
+    value: configService.get( EnvEnum.SMS_API_KEY ),
     service: SettingsServiceEnum.SMS,
     userAgent: "SYSTEM"
   },
@@ -95,9 +98,69 @@ export const settingsData = ( configService: ConfigService ) => [
     userAgent: "SYSTEM"
   },
   {
-    key: SettingsKeyEnum.ATTACHMENT_URL_EXP_HOURS,
+    key: SettingsKeyEnum.FILE_URL_EXP_HOURS,
     value: "24",
-    service: SettingsServiceEnum.ATTACHMENTS,
+    service: SettingsServiceEnum.FILES,
+    userAgent: "SYSTEM"
+  },
+  {
+    key: SettingsKeyEnum.FILE_WATERMARK_ACTIVE,
+    value: "true",
+    service: SettingsServiceEnum.FILES,
+    userAgent: "SYSTEM"
+  },
+  {
+    key: SettingsKeyEnum.FILE_WATERMARK_IMAGE_ID,
+    value: "",
+    service: SettingsServiceEnum.FILES,
+    userAgent: "SYSTEM"
+  },
+  {
+    key: SettingsKeyEnum.FILE_WATERMARK_TO_IMAGE_DIMENSIONS,
+    value: "0.2",
+    service: SettingsServiceEnum.FILES,
+    userAgent: "SYSTEM"
+  },
+  {
+    key: SettingsKeyEnum.FILE_WATERMARK_PLACEMENT,
+    value: FilesWatermarkPlacementEnum.TOP_RIGHT,
+    service: SettingsServiceEnum.FILES,
+    userAgent: "SYSTEM"
+  },
+  {
+    key: SettingsKeyEnum.FILE_WATERMARK_MARGINS_TOP,
+    value: "10",
+    service: SettingsServiceEnum.FILES,
+    userAgent: "SYSTEM"
+  },
+  {
+    key: SettingsKeyEnum.FILE_WATERMARK_MARGINS_RIGHT,
+    value: "10",
+    service: SettingsServiceEnum.FILES,
+    userAgent: "SYSTEM"
+  },
+  {
+    key: SettingsKeyEnum.FILE_WATERMARK_MARGINS_BOTTOM,
+    value: "10",
+    service: SettingsServiceEnum.FILES,
+    userAgent: "SYSTEM"
+  },
+  {
+    key: SettingsKeyEnum.FILE_WATERMARK_MARGINS_LEFT,
+    value: "10",
+    service: SettingsServiceEnum.FILES,
+    userAgent: "SYSTEM"
+  },
+  {
+    key: SettingsKeyEnum.FILE_WATERMARK_OPACITY,
+    value: "85",
+    service: SettingsServiceEnum.FILES,
+    userAgent: "SYSTEM"
+  },
+  {
+    key: SettingsKeyEnum.FILE_WATERMARK_SIZES,
+    value: "480,640,800,1200,1600",
+    service: SettingsServiceEnum.FILES,
     userAgent: "SYSTEM"
   },
 ];

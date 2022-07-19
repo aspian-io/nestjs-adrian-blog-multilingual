@@ -8,12 +8,14 @@ import { languageData } from "./common/seeding-data/languages.data";
 import * as chalk from 'chalk';
 import { ConfigService } from "@nestjs/config";
 import { settingsData } from "./common/seeding-data/settings.data";
-import { SettingsKeyEnum } from './settings/entities/setting.entity';
 import { UserMeta } from "./users/entities/user-meta.entity";
 import { userData } from "./common/seeding-data/users.data";
 import { Claim } from "./users/entities/claim.entity";
 import { claimData } from "./common/seeding-data/user-claims.data";
 import { PermissionsEnum } from "./common/security/permissions.enum";
+import { File } from "./files/entities/file.entity";
+import { SettingsKeyEnum } from "./settings/types/settings-key.enum";
+import { EnvEnum } from "./env.enum";
 
 @Injectable()
 export class AppSeederService {
@@ -23,6 +25,7 @@ export class AppSeederService {
     @InjectRepository( User ) private userRepository: Repository<User>,
     @InjectRepository( UserMeta ) private userMetaRepository: Repository<UserMeta>,
     @InjectRepository( Claim ) private claimRepository: Repository<Claim>,
+    @InjectRepository( File ) private fileRepository: Repository<File>,
     private configService: ConfigService
   ) { }
 
@@ -30,7 +33,7 @@ export class AppSeederService {
     try {
       // Langs
       await this.langRepository.insert( languageData );
-      const defaultLang = await this.langRepository.findOneBy( { localeName: this.configService.get( 'DEFAULT_LANG' ) } );
+      const defaultLang = await this.langRepository.findOneBy( { localeName: this.configService.get( EnvEnum.I18N_DEFAULT_LANG ) } );
       // Settings
       await this.settingsRepository.insert( settingsData( this.configService ) );
 
@@ -67,6 +70,8 @@ export class AppSeederService {
 
   async deleteMany () {
     try {
+      // Files
+      await this.fileRepository.delete( {} );
       // Claims
       await this.claimRepository.delete( {} );
       // UserMeta

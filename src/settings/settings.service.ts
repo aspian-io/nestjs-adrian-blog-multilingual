@@ -8,7 +8,8 @@ import { SettingsInfoLocale } from 'src/i18n/locale-keys/settings/info.locale';
 import { Repository } from 'typeorm';
 import { SettingListQueryDto } from './dto/list-query.dto';
 import { UpdateSettingDto } from './dto/update-setting.dto';
-import { Setting, SettingsKeyEnum } from './entities/setting.entity';
+import { Setting } from './entities/setting.entity';
+import { SettingsKeyEnum } from './types/settings-key.enum';
 
 @Injectable()
 export class SettingsService {

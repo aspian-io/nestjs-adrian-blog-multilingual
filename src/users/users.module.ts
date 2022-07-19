@@ -12,6 +12,7 @@ import { RtAuthGuard } from './guards/rt.guard';
 import { PermissionsGuard } from './guards/require-permissions.guard';
 import { Claim } from './entities/claim.entity';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { UppyJwtStrategy } from './strategies/uppy.strategy';
 
 @Module( {
   imports: [ TypeOrmModule.forFeature( [ User, UserMeta, Claim ] ), PassportModule, JwtModule.register( {} ) ],
@@ -20,6 +21,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
     UsersService,
     JwtStrategy,
     GoogleStrategy,
+    UppyJwtStrategy,
     RefreshTokenStrategy,
     JwtAuthGuard,
     RtAuthGuard,

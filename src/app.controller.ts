@@ -1,6 +1,4 @@
-import { Controller, Get, Req } from '@nestjs/common';
-import { Request } from 'express';
-import { I18n, I18nContext } from 'nestjs-i18n';
+import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 
 @Controller()

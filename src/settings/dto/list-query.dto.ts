@@ -1,5 +1,5 @@
 import { IsOptional } from "class-validator";
-import { SettingsServiceEnum } from "../entities/setting.entity";
+import { SettingsServiceEnum } from "../types/settings-service.enum";
 
 export class SettingListQueryDto {
   @IsOptional()

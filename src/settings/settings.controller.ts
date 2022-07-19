@@ -1,7 +1,6 @@
 import { Controller, Get, Body, Patch, Param, Query, UseGuards, CacheTTL } from '@nestjs/common';
 import { SettingsService } from './settings.service';
 import { UpdateSettingDto } from './dto/update-setting.dto';
-import { SettingsKeyEnum } from './entities/setting.entity';
 import { I18n, I18nContext } from 'nestjs-i18n';
 import { IMetadataDecorator, Metadata } from 'src/common/decorators/metadata.decorator';
 import { JwtAuthGuard } from 'src/users/guards/jwt.guard';
@@ -9,6 +8,7 @@ import { PermissionsGuard } from 'src/users/guards/require-permissions.guard';
 import { RequirePermission } from 'src/users/decorators/require-permission.decorator';
 import { PermissionsEnum } from 'src/common/security/permissions.enum';
 import { SettingListQueryDto } from './dto/list-query.dto';
+import { SettingsKeyEnum } from './types/settings-key.enum';
 
 @Controller( 'admin/settings' )
 @UseGuards( JwtAuthGuard, PermissionsGuard )

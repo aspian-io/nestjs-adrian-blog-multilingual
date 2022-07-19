@@ -23,6 +23,7 @@ import { LangsInfoLocale } from 'src/i18n/locale-keys/langs/info.locale';
 import { paginate } from 'nestjs-typeorm-paginate';
 import { UsersListQueryDto } from './dto/users-list-query.dto';
 import { Cache } from 'cache-manager';
+import { EnvEnum } from 'src/env.enum';
 
 @Injectable()
 export class UsersService {
@@ -110,7 +111,7 @@ export class UsersService {
   // Refresh access and refresh tokens
   async refreshTokens ( refreshToken: string ): Promise<IServiceUserRefreshTokensResult> {
     try {
-      const decodedRt = await this.jwtService.verifyAsync( refreshToken, { secret: this.configService.getOrThrow( 'REFRESH_TOKEN_SECRET' ) } );
+      const decodedRt = await this.jwtService.verifyAsync( refreshToken, { secret: this.configService.getOrThrow( EnvEnum.AUTH_REFRESH_TOKEN_SECRET ) } );
       const user = await this.userRepository.findOne( { where: { id: decodedRt[ 'sub' ] }, relations: { claims: true } } );
       if ( !user ) throw new ForbiddenException();
       if ( user.suspend && user.suspend.getTime() > Date.now() ) {
@@ -147,7 +148,7 @@ export class UsersService {
 
   // Find all users
   findAll ( query: UsersListQueryDto ) {
-    const search = query[ 'search' ] ? `%${ query[ 'search' ] }%` : null;
+    const { orderBy, page, limit, search  } = query;
     // Search fields
     const sqlFieldsToSearch = `
       user.email, 
@@ -163,47 +164,6 @@ export class UsersService {
       user_meta.lastName,
       user_meta.bio
       `;
-    // Sort fields
-    const sortFields = [
-      'user.email',
-      'user.birthDate',
-      'user.country',
-      'user.state',
-      'user.city',
-      'user.address',
-      'user.phone',
-      'user.mobilePhone',
-      'user.postalCode',
-      'user.createdAt',
-      'user.updatedAt',
-      'user.suspend',
-      'user.ipAddress',
-      'user.userAgent',
-      'user_meta.firstName',
-      'user_meta.lastName',
-      'user_meta.bio',
-      'user_meta.createdAt',
-      'user_meta.updatedAt',
-      'user_meta.ipAddress',
-      'user_meta.userAgent',
-    ];
-
-    // Filter Queries
-    const claimsFilter: string[] = query[ 'filterBy.claims' ] ? query[ 'filterBy.claims' ].toString().split( ',' ) : [];
-    const langFilter: string[] = query[ 'filterBy.lang' ] ? query[ 'filterBy.lang' ].toString().split( ',' ) : [];
-    const suspendFilter: string = query[ 'filterBy.suspended' ] ? query[ 'filterBy.suspended' ] : null;
-    // Sort Queries
-    const defaultSort = [ 'user.createdAt', 'DESC' ];
-    let sortParam: string[] = query[ 'orderBy' ] ? query[ 'orderBy' ].toString().split( ':' ) : defaultSort;
-    if (
-      sortParam.length !== 2
-      || !sortFields.includes( sortParam[ 0 ] )
-      || ![ 'ASC', 'DESC' ].includes( sortParam[ 1 ] )
-    ) { sortParam = defaultSort; }
-    // Pagination Queries
-    const page: number = query[ 'page' ] && query[ 'page' ] > 0 ? query[ 'page' ] : 1;
-    let limit: number = query[ 'limit' ] && query[ 'limit' ] > 0 ? query[ 'limit' ] : 10;
-    if ( limit > 100 ) limit = 100;
 
     const queryBuilder = this.userRepository
       .createQueryBuilder( "user" )
@@ -211,23 +171,23 @@ export class UsersService {
       .leftJoinAndSelect( 'user.meta', 'user_meta' )
       .leftJoinAndSelect( 'user_meta.lang', 'meta_lang' );
 
-    if ( claimsFilter.length ) {
-      queryBuilder.where( "user_claims.name IN (:...claims)", { claims: claimsFilter } );
+    if ( query['filterBy.claims']?.length ) {
+      queryBuilder.where( "user_claims.name IN (:...claims)", { claims: query['filterBy.claims'] } );
     }
 
-    if ( langFilter.length ) {
-      queryBuilder.andWhere( "meta_lang.localeName IN (:...localeNames)", { localeNames: langFilter } );
+    if ( query['filterBy.lang']?.length ) {
+      queryBuilder.andWhere( "meta_lang.localeName IN (:...localeNames)", { localeNames: query['filterBy.lang'] } );
     }
 
-    if ( suspendFilter ) {
+    if ( query['filterBy.suspended'] ) {
       queryBuilder.andWhere( "suspend IS NOT NULL AND suspend > CURRENT_TIMESTAMP" );
     }
 
     if ( search ) {
-      queryBuilder.andWhere( `concat_ws(' ', ${ sqlFieldsToSearch }) ILIKE coalesce(:search, concat_ws(' ', ${ sqlFieldsToSearch }))`, { search } );
+      queryBuilder.andWhere( `concat_ws(' ', ${ sqlFieldsToSearch }) ILIKE :search`, { search } );
     }
 
-    queryBuilder.orderBy( sortParam[ 0 ], sortParam[ 1 ] as ( 'ASC' | 'DESC' ) );
+    queryBuilder.orderBy( orderBy.sortField, orderBy.sortMethod);
 
     return paginate( queryBuilder, { page, limit } );
   }
@@ -323,7 +283,7 @@ export class UsersService {
     if ( !user ) throw new NotFoundLocalizedException( i18n, UsersInfoLocale.TERM_USER );
 
     const isUserOnlyAdmin = await this.isOnlyAdmin( id );
-    if (isUserOnlyAdmin) throw new BadRequestException( i18n.t( UsersErrorsLocal.ONLY_ADMIN ) );
+    if ( isUserOnlyAdmin ) throw new BadRequestException( i18n.t( UsersErrorsLocal.ONLY_ADMIN ) );
 
     await this.cacheManager.reset();
     return this.userRepository.softRemove( user );
@@ -335,7 +295,7 @@ export class UsersService {
     if ( !user ) throw new NotFoundLocalizedException( i18n, UsersInfoLocale.TERM_USER );
 
     const isUserOnlyAdmin = await this.isOnlyAdmin( id );
-    if (isUserOnlyAdmin) throw new BadRequestException( i18n.t( UsersErrorsLocal.ONLY_ADMIN ) );
+    if ( isUserOnlyAdmin ) throw new BadRequestException( i18n.t( UsersErrorsLocal.ONLY_ADMIN ) );
 
     await this.cacheManager.reset();
     return this.userRepository.recover( user );
@@ -347,7 +307,7 @@ export class UsersService {
     if ( !user ) throw new NotFoundLocalizedException( i18n, UsersInfoLocale.TERM_USER );
 
     const isUserOnlyAdmin = await this.isOnlyAdmin( id );
-    if (isUserOnlyAdmin) throw new BadRequestException( i18n.t( UsersErrorsLocal.ONLY_ADMIN ) );
+    if ( isUserOnlyAdmin ) throw new BadRequestException( i18n.t( UsersErrorsLocal.ONLY_ADMIN ) );
 
     await this.cacheManager.reset();
     return this.userRepository.remove( user );
@@ -369,8 +329,8 @@ export class UsersService {
 
   // Access Token Generator
   generateAccessToken ( userId: string, email: string, claims: string[] ): Promise<string> {
-    const secret = this.configService.get( 'ACCESS_TOKEN_SECRET' );
-    const expiresIn = this.configService.getOrThrow( 'ACCESS_TOKEN_EXPIRATION' );
+    const secret = this.configService.get( EnvEnum.AUTH_ACCESS_TOKEN_SECRET );
+    const expiresIn = this.configService.getOrThrow( EnvEnum.AUTH_ACCESS_TOKEN_EXPIRATION );
 
     return this.jwtService.signAsync(
       { sub: userId, email, clms: claims },
@@ -380,8 +340,8 @@ export class UsersService {
 
   // Refresh Token Generator
   generateRefreshToken ( userId: string, email: string ) {
-    const secret = this.configService.get( 'REFRESH_TOKEN_SECRET' );
-    const expiresIn = this.configService.getOrThrow( 'REFRESH_TOKEN_EXPIRATION' );
+    const secret = this.configService.get( EnvEnum.AUTH_REFRESH_TOKEN_SECRET );
+    const expiresIn = this.configService.getOrThrow( EnvEnum.AUTH_REFRESH_TOKEN_EXPIRATION );
 
     return this.jwtService.signAsync(
       { sub: userId, email },
