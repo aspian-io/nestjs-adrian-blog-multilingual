@@ -1,41 +1,21 @@
-import { Expose, Type } from "class-transformer";
+import { Expose, Transform } from "class-transformer";
 import { GenderEnum } from "../entities/user.entity";
-
-class UserLangDto {
-  @Expose()
-  id: string;
-
-  @Expose()
-  name: string;
-
-  @Expose()
-  localeName: string;
-
-  @Expose()
-  hrefLang: string;
-}
-
-class UserMetaDto {
-  @Expose()
-  id: string;
-
-  @Expose()
-  firstName: string;
-
-  @Expose()
-  bio: string;
-
-  @Expose()
-  lastName: string;
-
-  @Expose()
-  @Type( () => UserLangDto )
-  lang: UserLangDto;
-}
 
 export class UserDto {
   @Expose()
   accessToken: string;
+
+  @Expose()
+  @Transform( ( { obj } ) => obj.meta[ 0 ].firstName )
+  firstName: string;
+
+  @Expose()
+  @Transform( ( { obj } ) => obj.meta[ 0 ].lastName )
+  lastName: string;
+
+  @Expose()
+  @Transform( ( { obj } ) => obj.meta[ 0 ]?.bio )
+  bio: string;
 
   @Expose()
   username: string;
@@ -69,8 +49,4 @@ export class UserDto {
 
   @Expose()
   postalCode: string;
-
-  @Expose()
-  @Type( () => UserMetaDto )
-  meta: UserMetaDto[];
 }

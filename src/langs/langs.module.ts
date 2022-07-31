@@ -7,9 +7,11 @@ import { PathResolver } from './i18n-extensions/path-resolver.extension';
 
 @Global()
 @Module( {
-  imports: [ TypeOrmModule.forFeature( [ Lang ] ) ],
+  imports: [
+    TypeOrmModule.forFeature( [ Lang ] ),
+  ],
   controllers: [ LangsController ],
-  providers: [ LangsService, PathResolver],
+  providers: [ LangsService, PathResolver ],
   exports: [ TypeOrmModule, LangsService ]
 } )
 

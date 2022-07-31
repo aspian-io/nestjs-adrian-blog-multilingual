@@ -12,9 +12,9 @@ export class UserMeta extends BaseMinimalEntity {
   lastName: string;
 
   @Column( { nullable: true } )
-  bio: string;
+  bio?: string;
 
-  @ManyToOne( () => Lang, { eager: true } )
+  @ManyToOne( () => Lang, { eager: true, nullable: false } )
   lang: Lang;
 
   @ManyToOne( () => User, ( user ) => user.meta, { onDelete: "CASCADE" } )

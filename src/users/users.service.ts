@@ -1,15 +1,12 @@
 import { BadRequestException, CACHE_MANAGER, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IMetadataDecorator } from 'src/common/decorators/metadata.decorator';
-import { In, Not, Repository } from 'typeorm';
-import { CreateUserDto } from './dto/create-user.dto';
+import { Between, In, Not, Raw, Repository } from 'typeorm';
 import { UserMeta } from './entities/user-meta.entity';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { UserLoginDto } from './dto/login-user.dto';
-import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
 import { IServiceUserLoginResult, IServiceUserRefreshTokensResult, IServiceUserRegisterResult } from './types/services.type';
 import { I18nContext } from 'nestjs-i18n';
 import { UsersInfoLocale } from 'src/i18n/locale-keys/users/info.locale';
@@ -17,13 +14,15 @@ import { NotFoundLocalizedException } from 'src/common/exceptions/not-found-loca
 import { UsersErrorsLocal } from 'src/i18n/locale-keys/users/errors.locale';
 import { PermissionsEnum } from 'src/common/security/permissions.enum';
 import { Claim } from './entities/claim.entity';
-import { AddMetaDto } from './dto/add-meta.dto';
 import { LangsService } from 'src/langs/langs.service';
 import { LangsInfoLocale } from 'src/i18n/locale-keys/langs/info.locale';
-import { paginate } from 'nestjs-typeorm-paginate';
-import { UsersListQueryDto } from './dto/users-list-query.dto';
 import { Cache } from 'cache-manager';
 import { EnvEnum } from 'src/env.enum';
+import { FilterPaginationUtil, IListResultGenerator } from 'src/common/utils/filter-pagination.utils';
+import { AdminUpdateUserDto, AdminCreateUserDto, UserLoginDto, UsersListQueryDto, AdminAddMetaDto } from './dto';
+import { UpdateMetaDto } from './dto/update-meta.dto';
+import { UpdateUserClaimsDto } from './dto/update-claims.dto';
+import { CommonErrorsLocale } from 'src/i18n/locale-keys/common/errors.locale';
 
 @Injectable()
 export class UsersService {
@@ -39,7 +38,13 @@ export class UsersService {
 
   // Login Service (Local JWT)
   async loginLocal ( i18n: I18nContext, userLoginDto: UserLoginDto ): Promise<IServiceUserLoginResult> {
-    const user = await this.userRepository.findOne( { where: { email: userLoginDto.username }, relations: { claims: true } } );
+    const user = await this.userRepository.findOne( {
+      where: { email: userLoginDto.username },
+      relations: {
+        claims: true,
+        meta: true
+      }
+    } );
     if ( !user ) throw new NotFoundException( i18n.t( UsersErrorsLocal.INCORRECT_CREDENTIALS ) );
 
     const passwordMatch = await bcrypt.compare( userLoginDto.password, user.password );
@@ -53,35 +58,27 @@ export class UsersService {
     const refreshToken = await this.generateRefreshToken( user.id, user.email );
 
     return {
-      data: {
-        ...user
-      },
-      meta: {
-        accessToken,
-        refreshToken
-      }
+      ...user,
+      accessToken,
+      refreshToken
     };
   }
 
   // Register Service (Local JWT)
-  async registerLocal ( i18n: I18nContext, createUserDto: CreateUserDto, metadata: IMetadataDecorator ): Promise<IServiceUserRegisterResult> {
+  async registerLocal ( i18n: I18nContext, createUserDto: AdminCreateUserDto, metadata: IMetadataDecorator ): Promise<IServiceUserRegisterResult> {
     const user = await this.create( i18n, createUserDto, metadata );
     const accessToken = await this.generateAccessToken( user.id, user.email, [] );
     const refreshToken = await this.generateRefreshToken( user.id, user.email );
 
     return {
-      data: {
-        ...user
-      },
-      meta: {
-        accessToken,
-        refreshToken
-      }
+      ...user,
+      accessToken,
+      refreshToken
     };
   }
 
   // Create a new user
-  async create ( i18n: I18nContext, createUserDto: CreateUserDto, metadata: IMetadataDecorator ): Promise<User> {
+  async create ( i18n: I18nContext, createUserDto: AdminCreateUserDto, metadata: IMetadataDecorator ): Promise<User> {
     const { defaultLang, ipAddress, userAgent } = metadata;
     const existingUser = await this.userRepository.findOne( { where: { email: createUserDto.data.email } } );
     if ( existingUser ) {
@@ -112,7 +109,13 @@ export class UsersService {
   async refreshTokens ( refreshToken: string ): Promise<IServiceUserRefreshTokensResult> {
     try {
       const decodedRt = await this.jwtService.verifyAsync( refreshToken, { secret: this.configService.getOrThrow( EnvEnum.AUTH_REFRESH_TOKEN_SECRET ) } );
-      const user = await this.userRepository.findOne( { where: { id: decodedRt[ 'sub' ] }, relations: { claims: true } } );
+      const user = await this.userRepository.findOne( {
+        where: { id: decodedRt[ 'sub' ] },
+        relations: {
+          claims: true,
+          meta: true
+        }
+      } );
       if ( !user ) throw new ForbiddenException();
       if ( user.suspend && user.suspend.getTime() > Date.now() ) {
         throw new ForbiddenException();
@@ -120,8 +123,9 @@ export class UsersService {
       const accessToken = await this.generateAccessToken( user.id, user.email, user.claims.map( c => c.name ) );
       const newRefreshToken = await this.generateRefreshToken( user.id, user.email );
       return {
-        data: { ...user },
-        meta: { accessToken, refreshToken: newRefreshToken }
+        ...user,
+        accessToken,
+        refreshToken: newRefreshToken
       };
     } catch ( error ) {
       throw new ForbiddenException();
@@ -129,7 +133,7 @@ export class UsersService {
   }
 
   // Add user meta
-  async addMeta ( userId: string, body: AddMetaDto, i18n: I18nContext, metadata: IMetadataDecorator ): Promise<UserMeta> {
+  async addMeta ( userId: string, body: AdminAddMetaDto, i18n: I18nContext, metadata: IMetadataDecorator ): Promise<UserMeta> {
     const { ipAddress, userAgent } = metadata;
     const user = await this.userRepository.findOne( { where: { id: userId }, relations: { meta: { lang: true } } } );
     if ( !user ) throw new NotFoundLocalizedException( i18n, UsersInfoLocale.TERM_USER );
@@ -142,54 +146,83 @@ export class UsersService {
 
     const meta = this.userMetaRepository.create( { ...body, lang, user, ipAddress, userAgent } );
 
+
+    const result = await this.userMetaRepository.save( meta );
+    user.metaNum = user.meta.length;
+    await this.userRepository.save( user );
     await this.cacheManager.reset();
-    return this.userMetaRepository.save( meta );
+
+    return result;
   }
 
   // Find all users
-  findAll ( query: UsersListQueryDto ) {
-    const { orderBy, page, limit, search  } = query;
-    // Search fields
-    const sqlFieldsToSearch = `
-      user.email, 
-      user.birthDate,
-      user.country,
-      user.state,
-      user.city,
-      user.address,
-      user.phone, 
-      user.mobilePhone, 
-      user.postalCode, 
-      user_meta.firstName, 
-      user_meta.lastName,
-      user_meta.bio
-      `;
+  async findAll ( query: UsersListQueryDto ): Promise<IListResultGenerator<User>> {
+    const { page, limit } = query;
+    const { skip, take } = FilterPaginationUtil.takeSkipGenerator( limit, page );
 
-    const queryBuilder = this.userRepository
-      .createQueryBuilder( "user" )
-      .leftJoinAndSelect( 'user.claims', "user_claims" )
-      .leftJoinAndSelect( 'user.meta', 'user_meta' )
-      .leftJoinAndSelect( 'user_meta.lang', 'meta_lang' );
+    // Get the result from database
+    const [ items, totalItems ] = await this.userRepository.findAndCount( {
+      relations: {
+        claims: true,
+        meta: {
+          lang: true
+        }
+      },
+      where: {
+        email: query[ 'searchBy.email' ],
+        address: query[ 'searchBy.address' ],
+        phone: query[ 'searchBy.phone' ],
+        mobilePhone: query[ 'searchBy.mobilePhone' ],
+        postalCode: query[ 'searchBy.postalCode' ],
+        suspend: query[ 'filterBy.suspended' ] ? Raw( ( alias ) => `${ alias } > NOW()` ) : undefined,
+        birthDate: query[ 'filterBy.birthDate' ]?.length
+          ? Between( query[ 'filterBy.birthDate' ][ 0 ], query[ 'filterBy.birthDate' ][ 1 ] )
+          : undefined,
+        createdAt: query[ 'filterBy.createdAt' ]?.length
+          ? Between( query[ 'filterBy.createdAt' ][ 0 ], query[ 'filterBy.createdAt' ][ 1 ] )
+          : undefined,
+        updatedAt: query[ 'filterBy.updatedAt' ]?.length
+          ? Between( query[ 'filterBy.updatedAt' ][ 0 ], query[ 'filterBy.updatedAt' ][ 1 ] )
+          : undefined,
+        meta: {
+          firstName: query[ 'searchBy.firstName' ],
+          lastName: query[ 'searchBy.lastName' ],
+          bio: query[ 'searchBy.bio' ],
+          lang: {
+            localeName: query[ 'filterBy.lang' ]?.length ? In( query[ 'filterBy.lang' ] ) : undefined
+          }
+        },
+        metaNum: query[ 'filterBy.metaNumber' ],
+        claims: {
+          name: query[ 'filterBy.claims' ]?.length ? In( query[ 'filterBy.claims' ] ) : undefined
+        }
+      },
+      order: {
+        email: query[ 'orderBy.email' ],
+        birthDate: query[ 'orderBy.birthDate' ],
+        country: query[ 'orderBy.country' ],
+        state: query[ 'orderBy.state' ],
+        city: query[ 'orderBy.city' ],
+        address: query[ 'orderBy.address' ],
+        phone: query[ 'orderBy.phone' ],
+        mobilePhone: query[ 'orderBy.mobilePhone' ],
+        postalCode: query[ 'orderBy.postalCode' ],
+        createdAt: query[ 'orderBy.createdAt' ],
+        updatedAt: query[ 'orderBy.updatedAt' ],
+        suspend: query[ 'orderBy.suspend' ],
+        ipAddress: query[ 'orderBy.ipAddress' ],
+        userAgent: query[ 'orderBy.userAgent' ],
+        meta: {
+          firstName: query[ 'orderBy.firstName' ],
+          lastName: query[ 'orderBy.lastName' ],
+          bio: query[ 'orderBy.bio' ]
+        }
+      },
+      take,
+      skip
+    } );
 
-    if ( query['filterBy.claims']?.length ) {
-      queryBuilder.where( "user_claims.name IN (:...claims)", { claims: query['filterBy.claims'] } );
-    }
-
-    if ( query['filterBy.lang']?.length ) {
-      queryBuilder.andWhere( "meta_lang.localeName IN (:...localeNames)", { localeNames: query['filterBy.lang'] } );
-    }
-
-    if ( query['filterBy.suspended'] ) {
-      queryBuilder.andWhere( "suspend IS NOT NULL AND suspend > CURRENT_TIMESTAMP" );
-    }
-
-    if ( search ) {
-      queryBuilder.andWhere( `concat_ws(' ', ${ sqlFieldsToSearch }) ILIKE :search`, { search } );
-    }
-
-    queryBuilder.orderBy( orderBy.sortField, orderBy.sortMethod);
-
-    return paginate( queryBuilder, { page, limit } );
+    return FilterPaginationUtil.resultGenerator( items, totalItems, limit, page );
   }
 
   // Find one user
@@ -210,71 +243,79 @@ export class UsersService {
   // Update user's info
   async update ( i18n: I18nContext, id: string, userBody: AdminUpdateUserDto, logData: IMetadataDecorator ): Promise<User> {
 
-    const user = await this.userRepository.findOne( { where: { id }, relations: { claims: true, meta: { lang: true } } } );
-    if ( !user ) throw new NotFoundLocalizedException( i18n, UsersInfoLocale.TERM_USER );
+    const user = await this.findOne( id, i18n );
     // Check if new email address is in use
-    if ( userBody.data.email && userBody.data.email !== user.email ) {
-      const duplicateEmail = await this.userRepository.findOne( { where: { id: Not( id ), email: userBody.data.email } } );
+    if ( userBody.email && userBody.email !== user.email ) {
+      const duplicateEmail = await this.userRepository.findOne( { where: { id: Not( id ), email: userBody.email } } );
       if ( duplicateEmail ) throw new BadRequestException( i18n.t( UsersErrorsLocal.EMAIL_IN_USE ) );
     }
     // Check if new mobile phone is in use
-    if ( userBody.data.mobilePhone && userBody.data.mobilePhone !== user.mobilePhone ) {
-      const duplicateMobilePhone = await this.userRepository.findOne( { where: { id: Not( id ), mobilePhone: userBody.data.mobilePhone } } );
+    if ( userBody.mobilePhone && userBody.mobilePhone !== user.mobilePhone ) {
+      const duplicateMobilePhone = await this.userRepository.findOne( { where: { id: Not( id ), mobilePhone: userBody.mobilePhone } } );
       if ( duplicateMobilePhone ) throw new BadRequestException( i18n.t( UsersErrorsLocal.MOBILE_PHONE_IN_USE ) );
     }
 
     // Hash new password
-    userBody.data.password = userBody.data?.password ? await this.hash( userBody.data.password ) : undefined;
+    userBody.password = userBody?.password ? await this.hash( userBody.password ) : undefined;
 
     const userCopy: User = new User();
     Object.assign( userCopy, user );
-    Object.assign( user, userBody.data );
+    Object.assign( user, userBody );
     user.ipAddress = logData.ipAddress;
     user.userAgent = logData.userAgent;
 
-    if ( !!userBody.data.claims ) {
-      if ( userCopy.claims?.length ) {
-        const adminClaim = await this.claimRepository.findOne( { where: { name: PermissionsEnum.ADMIN } } );
-        const isUserAdmin = await this.userRepository.findOne( { relations: { claims: true }, where: { id: user.id, claims: { id: adminClaim.id } } } );
-        const adminCount = await this.userRepository.count( { relations: { claims: true }, where: { claims: { id: adminClaim.id } } } );
-        if ( adminCount <= 1 && isUserAdmin && !userBody.data.claims.includes( adminClaim.id ) ) {
-          throw new BadRequestException( i18n.t( UsersErrorsLocal.ONLY_ADMIN ) );
-        }
-      }
-      const claims = await this.claimRepository.find( { where: { id: In( userBody.data.claims ) } } );
-      user.claims = claims;
-    }
-
-    if ( userBody.metadata?.length ) {
-      const meta = await Promise.all( userBody.metadata.map( async meta => {
-        if ( meta.id ) {
-          const metadata = await this.userMetaRepository.findOne( {
-            relations: { user: true },
-            where: { id: meta.id, user: { id: user.id } }
-          } );
-          if ( metadata ) {
-            if ( meta.langId ) {
-              const duplicate = await this.userMetaRepository.findOne( {
-                relations: { user: true, lang: true },
-                where: { id: Not( meta.id ), user: { id: user.id }, lang: { id: meta.langId } }
-              } );
-              if ( duplicate ) throw new BadRequestException( i18n.t( UsersErrorsLocal.DUPLICATE_INFO ) );
-            }
-            Object.assign( metadata, meta );
-            metadata.ipAddress = logData.ipAddress;
-            metadata.userAgent = logData.userAgent;
-            return metadata;
-          }
-          throw new NotFoundLocalizedException( i18n, UsersInfoLocale.TERM_META );
-        } else {
-          throw new BadRequestException( i18n.t( UsersErrorsLocal.META_ID ) );
-        }
-      } ) );
-      user.meta = meta;
-    }
-
     await this.cacheManager.reset();
     return this.userRepository.save( user );
+  }
+
+  // Update user meta
+  async updateMeta ( id: string, body: UpdateMetaDto, i18n: I18nContext, metadata: IMetadataDecorator ): Promise<UserMeta> {
+    const meta = await this.userMetaRepository.findOne( {
+      where: { id },
+      relations: { user: true }
+    } );
+    if ( !meta ) throw new NotFoundLocalizedException( i18n, UsersInfoLocale.TERM_META );
+
+    Object.assign( meta, body );
+    meta.ipAddress = metadata.ipAddress;
+    meta.userAgent = metadata.userAgent;
+
+    return this.userMetaRepository.save( meta );
+  }
+
+  // Update user claims
+  async updateUserClaims ( userId: string, body: UpdateUserClaimsDto, i18n: I18nContext ): Promise<User> {
+    const user = await this.findOne( userId, i18n );
+    if ( user.claims?.length ) {
+      // Check for the only admin claim not to be removed
+      const adminClaim = await this.claimRepository.findOne( { where: { name: PermissionsEnum.ADMIN } } );
+      const isUserAdmin = await this.userRepository.findOne( { relations: { claims: true }, where: { id: user.id, claims: { id: adminClaim.id } } } );
+      const adminCount = await this.userRepository.count( { relations: { claims: true }, where: { claims: { id: adminClaim.id } } } );
+      if ( adminCount <= 1 && isUserAdmin && !body.claimIds.includes( adminClaim.id ) ) {
+        throw new BadRequestException( i18n.t( UsersErrorsLocal.ONLY_ADMIN ) );
+      }
+    }
+
+    const claims = await this.claimRepository.find( { where: { id: In( body.claimIds ) } } );
+    user.claims = claims;
+    const result = await this.userRepository.save( user );
+    await this.cacheManager.reset();
+    return result;
+  }
+
+  // remove meta
+  async removeMeta ( id: string, i18n: I18nContext, metadata: IMetadataDecorator ): Promise<UserMeta> {
+    const meta = await this.userMetaRepository.findOne( { where: { id } } );
+    if ( !meta ) throw new NotFoundLocalizedException( i18n, UsersInfoLocale.TERM_META );
+
+    if ( meta.lang.id === metadata.defaultLang.id ) {
+      throw new BadRequestException( i18n.t( CommonErrorsLocale.Delete_Default_info ) );
+    }
+
+    const result = await this.userMetaRepository.remove( meta );
+    await this.cacheManager.reset();
+
+    return result;
   }
 
   // Soft remove a user
@@ -293,9 +334,6 @@ export class UsersService {
   async recover ( i18n: I18nContext, id: string ): Promise<User> {
     const user = await this.userRepository.findOne( { where: { id }, relations: { meta: true }, withDeleted: true } );
     if ( !user ) throw new NotFoundLocalizedException( i18n, UsersInfoLocale.TERM_USER );
-
-    const isUserOnlyAdmin = await this.isOnlyAdmin( id );
-    if ( isUserOnlyAdmin ) throw new BadRequestException( i18n.t( UsersErrorsLocal.ONLY_ADMIN ) );
 
     await this.cacheManager.reset();
     return this.userRepository.recover( user );

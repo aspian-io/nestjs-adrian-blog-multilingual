@@ -15,7 +15,11 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { UppyJwtStrategy } from './strategies/uppy.strategy';
 
 @Module( {
-  imports: [ TypeOrmModule.forFeature( [ User, UserMeta, Claim ] ), PassportModule, JwtModule.register( {} ) ],
+  imports: [
+    TypeOrmModule.forFeature( [ User, UserMeta, Claim ] ),
+    PassportModule,
+    JwtModule.register( {} )
+  ],
   controllers: [ UsersController ],
   providers: [
     UsersService,

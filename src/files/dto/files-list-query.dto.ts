@@ -1,83 +1,93 @@
-import { Expose, Transform } from "class-transformer";
-import { IsIn, IsNotEmpty, IsOptional, IsString, ValidateIf } from "class-validator";
-import { ISortValues, QueryStringUtils } from "src/common/utils/query-string.utils";
+import { Transform } from "class-transformer";
+import { IsOptional } from "class-validator";
+import { QueryStringUtil } from "src/common/utils/query-string.utils";
 import { FilePolicyEnum, FileSectionEnum, FileStatus, ImageSizeCategories } from "../entities/file.entity";
+
+type OrderType = 'ASC' | 'DESC';
 
 export class FilesListQueryDto {
 
-  @Transform( ( { value } ) => QueryStringUtils.extractSearchString( value ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractSearchString( value ) )
   @IsOptional()
-  search?: string;
+  "searchBy.filename"?: string;
 
-  @Transform( ( { value } ) => QueryStringUtils.extractValuesListBasedOn( value, Object.values( FilePolicyEnum ) ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractSearchString( value ) )
+  @IsOptional()
+  "searchBy.key"?: string;
+
+  @Transform( ( { value } ) => QueryStringUtil.extractValuesListBasedOn( value, Object.values( FilePolicyEnum ) ) )
   @IsOptional()
   "filterBy.policy"?: FilePolicyEnum[];
 
-  @Transform( ( { value } ) => QueryStringUtils.extractCommaSeparatedStrings( value ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractCommaSeparatedStrings( value ) )
   @IsOptional()
   "filterBy.type"?: string[];
 
-  @Transform( ( { value } ) => QueryStringUtils.extractCommaSeparatedNumberRange( value ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractCommaSeparatedNumberRange( value ) )
   @IsOptional()
   "filterBy.size"?: number[];
 
-  @Transform( ( { value } ) => QueryStringUtils.extractValuesListBasedOn( value, Object.values( FileStatus ) ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractValuesListBasedOn( value, Object.values( FileStatus ) ) )
   @IsOptional()
   "filterBy.status"?: FileStatus[];
 
-  @Transform( ( { value } ) => QueryStringUtils.extractValuesListBasedOn( value, Object.values( FileSectionEnum ) ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractValuesListBasedOn( value, Object.values( FileSectionEnum ) ) )
   @IsOptional()
   "filterBy.section"?: FileSectionEnum[];
 
-  @Transform( ( { value } ) => QueryStringUtils.extractValuesListBasedOn( value, Object.values( ImageSizeCategories ) ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractValuesListBasedOn( value, Object.values( ImageSizeCategories ) ) )
   @IsOptional()
   "filterBy.imageSizeCategory"?: ImageSizeCategories[];
 
+  @Transform( ( { value } ) => QueryStringUtil.extractCommaSeparatedDateRange( value ) )
   @IsOptional()
-  "filterBy.createdBy"?: string;
+  "filterBy.createdAt"?: Date[];
 
+  @Transform( ( { value } ) => QueryStringUtil.extractCommaSeparatedDateRange( value ) )
   @IsOptional()
-  "filterBy.updatedBy"?: string;
+  "filterBy.updatedAt"?: Date[];
 
-  @Transform( ( { value } ) => QueryStringUtils.extractCommaSeparatedDateRange( value ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractOrder( value ) )
   @IsOptional()
-  "filterBy.createdAt"?: string[];
+  "orderBy.key"?: OrderType;
 
-  @Transform( ( { value } ) => QueryStringUtils.extractCommaSeparatedDateRange( value ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractOrder( value ) )
   @IsOptional()
-  "filterBy.updatedAt"?: string[];
+  "orderBy.filename"?: OrderType;
 
-  @Transform(
-    ( { value } ) => QueryStringUtils.extractColonSeparatedSortParams( defaultSort, sortFields, value )
-  )
+  @Transform( ( { value } ) => QueryStringUtil.extractOrder( value ) )
   @IsOptional()
-  orderBy?: ISortValues = {
-    sortField: defaultSort[ 0 ],
-    sortMethod: defaultSort[ 1 ] as 'ASC' | 'DESC'
-  };
+  "orderBy.policy"?: OrderType;
 
-  @Transform( ( { value } ) => QueryStringUtils.extractPage( value ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractOrder( value ) )
+  @IsOptional()
+  "orderBy.type"?: OrderType;
+
+  @Transform( ( { value } ) => QueryStringUtil.extractOrder( value ) )
+  @IsOptional()
+  "orderBy.size"?: OrderType;
+
+  @Transform( ( { value } ) => QueryStringUtil.extractOrder( value ) )
+  @IsOptional()
+  "orderBy.status"?: OrderType;
+
+  @Transform( ( { value } ) => QueryStringUtil.extractOrder( value ) )
+  @IsOptional()
+  "orderBy.section"?: OrderType;
+
+  @Transform( ( { value } ) => QueryStringUtil.extractOrder( value ) )
+  @IsOptional()
+  "orderBy.createdAt"?: OrderType;
+
+  @Transform( ( { value } ) => QueryStringUtil.extractOrder( value ) )
+  @IsOptional()
+  "orderBy.updatedAt"?: OrderType;
+
+  @Transform( ( { value } ) => QueryStringUtil.extractPage( value ) )
   @IsOptional()
   page?: number = 1;
 
-  @Transform( ( { value } ) => QueryStringUtils.extractLimit( value ) )
+  @Transform( ( { value } ) => QueryStringUtil.extractLimit( value ) )
   @IsOptional()
   limit?: number = 10;
 }
-
-// Default Sort
-const defaultSort = [ 'file.createdAt', 'DESC' ];
-// Sort Fields
-const sortFields = [
-  'file.key',
-  'file.filename',
-  'file.policy',
-  'file.type',
-  'file.size',
-  'file.status',
-  'file.section',
-  'file.createdAt',
-  'file.updatedAt',
-  'file.createdBy',
-  'file.updatedBy'
-];

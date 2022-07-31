@@ -1,6 +1,7 @@
 import * as moment from "moment";
+import { FindOperator, ILike } from "typeorm";
 
-export class QueryStringUtils {
+export class QueryStringUtil {
 
   /**
    * Extract and make ready to use search querystring
@@ -8,8 +9,8 @@ export class QueryStringUtils {
    * @param query - Search querystring
    * @returns Ready to use search string with % wildcards
    */
-  static extractSearchString ( query: string ): string {
-    return `%${ query.trim() }%`;
+  static extractSearchString ( query: string ): FindOperator<string> {
+    return ILike( `%${ query.trim() }%` );
   }
 
   /**
@@ -42,28 +43,14 @@ export class QueryStringUtils {
   }
 
   /**
-   * Extract colon separated sort values from querystring
+   * Extract Order
    * 
-   * @param defaultSort - Default sort values
-   * @param sortFields - Fields for which sorting is allowed
-   * @param orderQuery - Sort querystring
-   * @returns An object of the type {@link ISortValues} containing sortValue and sortValueMethod.
+   * @param query - Value of type ASC | DESC
+   * @returns 'ASC' or 'DESC' or undefined
    */
-  static extractColonSeparatedSortParams (
-    defaultSort: string[],
-    sortFields: string[],
-    orderQuery: string ): ISortValues {
-    let sortParam: string[] = orderQuery.toString().split( ':' ).length === 2
-      ? orderQuery.toString().split( ':' )
-      : defaultSort;
-    if ( !sortFields.includes( sortParam[ 0 ] ) || ![ 'ASC', 'DESC' ].includes( sortParam[ 1 ] ) ) {
-      sortParam = defaultSort;
-    }
-
-    return {
-      sortField: sortParam[ 0 ],
-      sortMethod: sortParam[ 1 ] as 'ASC' | 'DESC'
-    };
+  static extractOrder ( query: string ) {
+    if ( [ 'ASC', 'DESC' ].includes( query ) ) return query;
+    return undefined;
   }
 
   /**
@@ -94,15 +81,18 @@ export class QueryStringUtils {
    * @param query - Date range querystring
    * @returns An array of ISO-string dates
    */
-  static extractCommaSeparatedDateRange ( query: string ): string[] {
+  static extractCommaSeparatedDateRange ( query: string ): Date[] {
     let dateRangeValues: string[] = query.toString().split( ',' );
     if (
       dateRangeValues.length === 2
       && moment( dateRangeValues[ 0 ], "YYYY-MM-DD", true ).isValid()
       && moment( dateRangeValues[ 1 ], "YYYY-MM-DD", true ).isValid()
     ) {
+      const dateRange: Date[] = [];
+      dateRange.push( new Date( dateRangeValues[ 0 ] ) );
+      dateRange.push( new Date( dateRangeValues[ 1 ] ) );
 
-      return dateRangeValues.length ? dateRangeValues : [];
+      return dateRangeValues.length ? dateRange : [];
     }
     return [];
   }
@@ -115,7 +105,7 @@ export class QueryStringUtils {
    * @returns value or null
    */
   static extractValueBasedOn ( query: string, allowedValues: string[] ): string {
-    return allowedValues.includes( query ) ? query : null;
+    return allowedValues.includes( query ) ? query : undefined;
   }
 
   /**

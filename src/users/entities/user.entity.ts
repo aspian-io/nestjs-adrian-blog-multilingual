@@ -1,5 +1,7 @@
+import { Expose } from "class-transformer";
 import { BaseMinimalEntity } from "src/common/entities/base-minimal.entity";
-import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Post } from "src/posts/entities/post.entity";
+import { Column, Entity, JoinColumn, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { Claim } from "./claim.entity";
 import { UserMeta } from "./user-meta.entity";
 
@@ -45,7 +47,7 @@ export class User extends BaseMinimalEntity {
   postalCode: string;
 
   @Column( { nullable: true } )
-  suspend: Date;
+  suspend: Date | null;
 
   @ManyToMany( () => Claim, { cascade: true } )
   @JoinTable( { name: "users_claims" } )
@@ -53,8 +55,17 @@ export class User extends BaseMinimalEntity {
 
   @OneToMany(
     () => UserMeta,
-    ( userMeta ) => userMeta.user,
+    ( meta ) => meta.user,
     { cascade: true }
   )
   meta: UserMeta[];
+
+  @Column( { default: 1 } )
+  metaNum: number;
+
+  @ManyToMany( () => Post, ( post ) => post.bookmarks, { cascade: true } )
+  @JoinTable( {
+    name: 'users_posts_bookmarks'
+  } )
+  bookmarks: Post[];
 }

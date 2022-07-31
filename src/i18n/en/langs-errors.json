@@ -1,3 +1,4 @@
 {
-  "delete-default-lang": "Default language cannot be deleted"
+  "delete-default-lang": "Default language cannot be deleted",
+  "modify-default-lang": "Default language cannot be modified"
 }

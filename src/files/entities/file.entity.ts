@@ -1,5 +1,5 @@
-import { BaseEntity } from "src/common/entities/base.entity";
-import { Column, Entity, JoinColumn, JoinTable, ManyToOne, OneToMany, OneToOne } from "typeorm";
+import { BaseMinimalEntity } from "src/common/entities/base-minimal.entity";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from "typeorm";
 
 export enum FilePolicyEnum {
   PUBLIC_READ = "public-read",
@@ -37,7 +37,7 @@ export enum FileStatus {
 }
 
 @Entity()
-export class File extends BaseEntity {
+export class File extends BaseMinimalEntity {
   @Column( { unique: true } )
   key: string;
 

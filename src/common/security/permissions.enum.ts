@@ -20,4 +20,14 @@ export enum PermissionsEnum {
   FILE_CREATE = "file_w",
   FILE_EDIT = "file_w+",
   FILE_DELETE = "file_d",
+  // TAXONOMIES
+  TAXONOMY_READ = "taxonomy_r",
+  TAXONOMY_CREATE = "taxonomy_w",
+  TAXONOMY_EDIT = "taxonomy_w+",
+  TAXONOMY_DELETE = "taxonomy_d",
+  // POSTS
+  POST_READ = "post_r",
+  POST_CREATE = "post_w",
+  POST_EDIT = "post_w+",
+  POST_DELETE = "post_d",
 }

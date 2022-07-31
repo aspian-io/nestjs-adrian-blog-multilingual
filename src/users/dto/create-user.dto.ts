@@ -1,8 +1,8 @@
 import { Type } from "class-transformer";
-import { IsDate, IsEmail, IsIn, IsMobilePhone, IsOptional, IsPhoneNumber, IsPostalCode, IsString, Matches, MaxLength, MinLength, ValidateNested } from "class-validator";
+import { IsDate, IsEmail, IsIn, IsMobilePhone, IsNotEmpty, IsOptional, IsPhoneNumber, IsPostalCode, IsString, Matches, MaxLength, MinLength, ValidateNested } from "class-validator";
 import { i18nValidationMessage } from "nestjs-i18n";
 import { CommonErrorsLocale } from "src/i18n/locale-keys/common/errors.locale";
-import { GenderEnum } from "../entities/user.entity";
+import { GenderEnum } from "src/users/entities/user.entity";
 
 export class UserDataCreateDto {
   @IsEmail( {}, { message: CommonErrorsLocale.VALIDATOR_IS_EMAIL } )
@@ -77,7 +77,7 @@ export class UserMetaCreateDto {
 }
 
 
-export class CreateUserDto {
+export class AdminCreateUserDto {
 
   @ValidateNested()
   @Type( () => UserDataCreateDto )

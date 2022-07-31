@@ -70,7 +70,7 @@ export class LangsService {
 
   // Find language by its localeName
   async findByLocaLeName ( localeName: string, i18n?: I18nContext, ignoreErrors: boolean = false ): Promise<Lang> {
-    const cacheKey = `LANGS__SERVICE_LEVEL_CACHE__FIND_BY_LOCALE`;
+    const cacheKey = `LANGS__SERVICE_LEVEL_CACHE__FIND_BY_LOCALE_${ localeName }`;
     const cachedResult: Lang | null = await this.cacheManager.get( cacheKey );
 
     if ( !cachedResult ) {
@@ -98,7 +98,7 @@ export class LangsService {
 
     const defaultLang = await this.findDefaultLang( i18n );
     if ( defaultLang.id === lang.id ) {
-      throw new BadRequestException( i18n.t( LangsErrorsLocale.DELETE_DEFAULT_LANG ) );
+      throw new BadRequestException( i18n.t( LangsErrorsLocale.MODIFY_DEFAULT_LANG ) );
     }
 
     Object.assign( lang, updateLangDto );

@@ -7,7 +7,7 @@ import * as sharp from 'sharp';
 import * as path from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
 import { File, FilePolicyEnum, FileSectionEnum, FileStatus, ImageSizeCategories } from './entities/file.entity';
-import { Repository } from 'typeorm';
+import { Between, In, Repository } from 'typeorm';
 import { I18nContext } from 'nestjs-i18n';
 import { IMetadataDecorator } from 'src/common/decorators/metadata.decorator';
 import { InjectQueue } from '@nestjs/bull';
@@ -22,11 +22,11 @@ import { CommonErrorsLocale } from 'src/i18n/locale-keys/common/errors.locale';
 import { FileJobs } from './queues/jobs.enum';
 import { IImageResizerPayload } from './queues/consumers/image-resizer.consumer';
 import { FilesListQueryDto } from './dto/files-list-query.dto';
-import { paginate, PaginationTypeEnum } from 'nestjs-typeorm-paginate';
 import { Cache } from 'cache-manager';
 import { sanitize } from 'string-sanitizer';
 import { S3 as S3Type } from "aws-sdk";
 import { EnvEnum } from 'src/env.enum';
+import { FilterPaginationUtil, IListResultGenerator } from 'src/common/utils/filter-pagination.utils';
 
 @Injectable()
 export class FilesService {
@@ -60,7 +60,6 @@ export class FilesService {
       imageSizeCategory,
       status,
       originalImage: { id: createFileDto.originalImage },
-      createdBy: { id: metadata.user.id },
       ipAddress: metadata.ipAddress,
       userAgent: metadata.userAgent
     } );
@@ -80,77 +79,47 @@ export class FilesService {
   }
 
   // Find all uploaded files
-  findAll ( query: FilesListQueryDto ) {
-    const { search, page, limit, orderBy } = query;
-    // Search Fields
-    const sqlFieldsToSearch = `
-      file.filename,
-      file.key
-    `;
+  async findAll ( query: FilesListQueryDto ): Promise<IListResultGenerator<File>> {
+    const { page, limit } = query;
+    const { skip, take } = FilterPaginationUtil.takeSkipGenerator( limit, page );
 
-    const fileQueryBuilder = this.fileRepository
-      .createQueryBuilder( 'file' )
-      .leftJoinAndSelect( 'file.originalImage', 'original_image' )
-      .leftJoinAndSelect( 'file.generatedImageChildren', 'image_children' )
-      .leftJoinAndSelect( 'file.videoThumbnail', 'video_thumbnail' )
-      .leftJoinAndSelect( 'file.createdBy', 'file_created_by' )
-      .leftJoinAndSelect( 'file.updatedBy', 'file_updated_by' );
+    const [ items, totalItems ] = await this.fileRepository.findAndCount( {
+      relations: {
+        originalImage: true,
+        generatedImageChildren: true,
+        videoThumbnail: true
+      },
+      where: {
+        filename: query[ 'searchBy.filename' ],
+        key: query[ 'searchBy.key' ],
+        policy: query[ 'filterBy.policy' ]?.length ? In( query[ 'filterBy.policy' ] ) : undefined,
+        type: query[ 'filterBy.type' ]?.length ? In( query[ 'filterBy.type' ] ) : undefined,
+        size: query[ 'filterBy.size' ]?.length
+          ? Between( query[ 'filterBy.size' ][ 0 ], query[ 'filterBy.size' ][ 1 ] ) : undefined,
+        status: query[ 'filterBy.status' ]?.length ? In( query[ 'filterBy.status' ] ) : undefined,
+        section: query[ 'filterBy.section' ]?.length ? In( query[ 'filterBy.section' ] ) : undefined,
+        imageSizeCategory: query[ 'filterBy.imageSizeCategory' ]?.length ? In( query[ 'filterBy.imageSizeCategory' ] ) : undefined,
+        createdAt: query[ 'filterBy.createdAt' ]?.length
+          ? Between( query[ 'filterBy.createdAt' ][ 0 ], query[ 'filterBy.createdAt' ][ 1 ] ) : undefined,
+        updatedAt: query[ 'filterBy.updatedAt' ]?.length
+          ? Between( query[ 'filterBy.updatedAt' ][ 0 ], query[ 'filterBy.updatedAt' ][ 1 ] ) : undefined,
+      },
+      order: {
+        key: query[ 'orderBy.key' ],
+        filename: query[ 'orderBy.filename' ],
+        policy: query[ 'orderBy.policy' ],
+        type: query[ 'orderBy.type' ],
+        size: query[ 'orderBy.size' ],
+        status: query[ 'orderBy.status' ],
+        section: query[ 'orderBy.section' ],
+        createdAt: query[ 'orderBy.createdAt' ],
+        updatedAt: query[ 'orderBy.updatedAt' ],
+      },
+      take,
+      skip
+    } );
 
-    if ( query[ 'filterBy.policy' ]?.length ) {
-      fileQueryBuilder.andWhere( "file.policy IN (:...policies)", { policies: query[ 'filterBy.policy' ] } );
-    }
-
-    if ( query[ 'filterBy.type' ]?.length ) {
-      fileQueryBuilder.andWhere( "file.type IN (:...types)", { types: query[ 'filterBy.type' ] } );
-    }
-
-    if ( query[ 'filterBy.size' ]?.length ) {
-      fileQueryBuilder.andWhere( "file.size IN (:...sizes)", { sizes: query[ 'filterBy.size' ] } );
-    }
-
-    if ( query[ 'filterBy.status' ]?.length ) {
-      fileQueryBuilder.andWhere( "file.status IN (:...status)", { status: query[ 'filterBy.status' ] } );
-    }
-
-    if ( query[ 'filterBy.section' ]?.length ) {
-      fileQueryBuilder.andWhere( "file.section IN (:...sections)", { sections: query[ 'filterBy.section' ] } );
-    }
-
-    if ( query[ 'filterBy.imageSizeCategory' ]?.length ) {
-      fileQueryBuilder.andWhere( "file.imageSizeCategory IN (:...imageSizeCategory)", { imageSizeCategory: query[ 'filterBy.imageSizeCategory' ] } );
-    }
-
-    if ( query[ 'filterBy.createdAt' ]?.length ) {
-      fileQueryBuilder.andWhere( "file.createdAt BETWEEN :createStartDate AND :createEndDate", {
-        createStartDate: query[ 'filterBy.createdAt' ][ 0 ],
-        createEndDate: query[ 'filterBy.createdAt' ][ 1 ]
-      }
-      );
-    }
-
-    if ( query[ 'filterBy.updatedAt' ]?.length ) {
-      fileQueryBuilder.andWhere( "file.updatedAt BETWEEN :updateStartDate AND :updateEndDate", {
-        updateStartDate: query[ 'filterBy.updatedAt' ][ 0 ],
-        updateEndDate: query[ 'filterBy.updatedAt' ][ 1 ]
-      }
-      );
-    }
-
-    if ( query[ 'filterBy.createdBy' ] ) {
-      fileQueryBuilder.andWhere( `file_created_by.email = :createdBy`, { createdBy: query[ 'filterBy.createdBy' ] } );
-    }
-
-    if ( query[ 'filterBy.updatedBy' ] ) {
-      fileQueryBuilder.andWhere( `file_updated_by.email = :updatedBy`, { updatedBy: query[ 'filterBy.updatedBy' ] } );
-    }
-
-    if ( search ) {
-      fileQueryBuilder.andWhere( `concat_ws(' ', ${ sqlFieldsToSearch }) ILIKE :search`, { search } );
-    }
-
-    fileQueryBuilder.orderBy( orderBy.sortField, orderBy.sortMethod );
-
-    return paginate( fileQueryBuilder, { page, limit } );
+    return FilterPaginationUtil.resultGenerator( items, totalItems, limit, page );
   }
 
   // Find an uploaded file info by its Id
@@ -161,8 +130,6 @@ export class FilesService {
         generatedImageChildren: true,
         originalImage: true,
         videoThumbnail: true,
-        createdBy: true,
-        updatedBy: true
       }
     } );
 

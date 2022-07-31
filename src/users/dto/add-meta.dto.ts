@@ -1,10 +1,10 @@
 import { PartialType } from "@nestjs/mapped-types";
 import { IsNotEmpty, IsString } from "class-validator";
-import { Lang } from "src/langs/entities/lang.entity";
+import { CommonErrorsLocale } from "src/i18n/locale-keys/common/errors.locale";
 import { UserMetaCreateDto } from "./create-user.dto";
 
-export class AddMetaDto extends PartialType( UserMetaCreateDto ) {
-  @IsString()
-  @IsNotEmpty()
+export class AdminAddMetaDto extends PartialType( UserMetaCreateDto ) {
+  @IsString( { message: CommonErrorsLocale.VALIDATOR_IS_STRING } )
+  @IsNotEmpty( { message: CommonErrorsLocale.VALIDATOR_IS_NOT_EMPTY } )
   langId: string;
 }

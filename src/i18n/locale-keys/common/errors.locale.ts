@@ -1,8 +1,12 @@
 export enum CommonErrorsLocale {
   Not_Found = "common-errors.not-found",
   Bad_Request = "common-errors.bad-request",
+  Duplicate_Meta_Lang = "common-errors.duplicate-meta-lang",
+  Default_Info_Not_Defined = "common-errors.default-info-not-defined",
+  Delete_Default_info = "common-errors.delete-default-info",
 
   // Class validator 
+  VALIDATOR_IS_UUID = "common-errors.class-validator.is-uuid",
   VALIDATOR_IS_STRING = "common-errors.class-validator.is-string",
   VALIDATOR_IS_NUMBER = "common-errors.class-validator.is-number",
   VALIDATOR_IS_NOT_EMPTY = "common-errors.class-validator.is-not-empty",

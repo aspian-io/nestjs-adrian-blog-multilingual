@@ -2,7 +2,7 @@ import { Column, CreateDateColumn, DeleteDateColumn, PrimaryGeneratedColumn, Upd
 
 export abstract class BaseMinimalEntity {
   @PrimaryGeneratedColumn( 'uuid' )
-  id?: string;
+  id: string;
 
   @CreateDateColumn( { type: 'timestamp', default: () => 'CURRENT_TIMESTAMP(6)' } )
   createdAt?: Date;

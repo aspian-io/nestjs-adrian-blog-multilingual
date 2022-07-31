@@ -1,7 +1,11 @@
 {
   "not-found": "{prop} not found",
   "bad-request": "Something went wrong",
+  "duplicate-meta-lang": "Duplicate info language is not allowed",
+  "default-info-not-defined": "Default meta info (for default language) must be defined",
+  "delete-default-info": "Default meta info cannot be deleted",
   "class-validator": {
+    "is-uuid": "Field value must be a UUID",
     "is-string": "Field value must be a string",
     "is-number": "Field value must be a number",
     "is-not-empty": "Field should not be empty",
@@ -15,10 +19,7 @@
     "is-date": "Field value must be a correct date",
     "is-in": "Field value must be an item from {constraints.0}",
     "is-array": "Field value must be an array",
-    "array-min-length": {
-      "one": "Array min length needs to be at least {constraints.0} element",
-      "other": "Array min length needs to be at least {constraints.0} elements"
-    },
+    "array-min-length": "Array min length needs to be at least {constraints.0} element",
     "is-boolean": "Field value must be a boolean"
   }
 }

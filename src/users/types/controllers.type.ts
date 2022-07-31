@@ -1,21 +1,7 @@
-import { Claim } from "../entities/claim.entity";
-import { UserMeta } from "../entities/user-meta.entity";
+import { User } from "../entities/user.entity";
 
 // Login User Result
-export interface IControllerUserLoginResult {
-  email: string;
-  password: string;
-  phone: string;
-  mobilePhone: string;
-  postalCode: string;
-  claims: Claim[];
-  meta: UserMeta[];
-  id?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  ipAddress?: string;
-  userAgent?: string;
-  deletedAt?: Date;
+export interface IControllerUserLoginResult extends User {
   accessToken: string;
 }
 

@@ -1,13 +1,10 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Res, UseGuards, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { Serialize } from 'src/common/interceptors/serialize.interceptor';
-import { UserDto } from './dto/user.dto';
 import { IMetadataDecorator, Metadata } from 'src/common/decorators/metadata.decorator';
 import { Response } from 'express';
 import { Tokens } from './types/services.type';
 import { ConfigService } from '@nestjs/config';
-import { UserLoginDto } from './dto/login-user.dto';
 import { JwtService } from '@nestjs/jwt';
 import { CurrentUser } from 'src/users/decorators/current-user.decorator';
 import { IJwtStrategyUser, IRtStrategyUser } from './strategies/types';
@@ -17,23 +14,28 @@ import { PermissionsGuard } from './guards/require-permissions.guard';
 import { RequirePermission } from './decorators/require-permission.decorator';
 import { PermissionsEnum } from 'src/common/security/permissions.enum';
 import { User } from './entities/user.entity';
-import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
 import { IControllerUserLoginResult, IControllerUserRefreshTokensResult, IControllerUserRegisterResult } from './types/controllers.type';
 import { I18n, I18nContext } from 'nestjs-i18n';
 import { Claim } from './entities/claim.entity';
-import { AddMetaDto } from './dto/add-meta.dto';
 import { UserMeta } from './entities/user-meta.entity';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { UsersListQueryDto } from './dto/users-list-query.dto';
 import { EnvEnum } from 'src/env.enum';
+import { IListResultGenerator } from 'src/common/utils/filter-pagination.utils';
+import { ObjectUtils } from 'src/common/utils/object.utils';
+import { AdminAddMetaDto, AdminUpdateUserDto, AdminCreateUserDto, UpdateUserDto, UserLoginDto, UsersListQueryDto } from './dto';
+import { LoginRegisterDto, UserDto } from './dto';
+import { UpdateMetaDto } from './dto/update-meta.dto';
+import { UpdateUserClaimsDto } from './dto/update-claims.dto';
 
 @Controller()
 export class UsersController {
+  private readonly defaultLangLocaleName: string;
   constructor (
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService
-  ) { }
+  ) {
+    this.defaultLangLocaleName = configService.getOrThrow( EnvEnum.I18N_DEFAULT_LANG );
+  }
 
   /************************ */
   /* Users Controllers Area */
@@ -42,17 +44,17 @@ export class UsersController {
   // Login
   @Post( 'users/login' )
   @HttpCode( HttpStatus.OK )
-  @Serialize( UserDto )
+  @Serialize( LoginRegisterDto )
   async login (
     @I18n() i18n: I18nContext,
     @Body() userLoginDto: UserLoginDto,
     @Res( { passthrough: true } ) res: Response ): Promise<IControllerUserLoginResult> {
     const user = await this.usersService.loginLocal( i18n, userLoginDto );
-    const decodedRt = this.jwtService.decode( user.meta.refreshToken );
+    const decodedRt = this.jwtService.decode( user.refreshToken );
 
     res.cookie(
       Tokens.REFRESH_TOKEN,
-      user.meta.refreshToken,
+      user.refreshToken,
       {
         signed: true,
         httpOnly: true,
@@ -61,23 +63,25 @@ export class UsersController {
         expires: new Date( parseInt( decodedRt[ 'exp' ] ) * 1000 )
       } );
 
-    return { ...user.data, accessToken: user.meta.accessToken };
+    ObjectUtils.adjustEntityMetaResultByLang( user, this.defaultLangLocaleName, i18n.lang );
+
+    return { ...user, accessToken: user.accessToken };
   }
 
   // Register
   @Post( 'users/register' )
-  @Serialize( UserDto )
+  @Serialize( LoginRegisterDto )
   async register (
     @I18n() i18n: I18nContext,
-    @Body() createUserDto: CreateUserDto,
+    @Body() createUserDto: AdminCreateUserDto,
     @Metadata() metadata: IMetadataDecorator,
     @Res( { passthrough: true } ) res: Response ): Promise<IControllerUserRegisterResult> {
     const user = await this.usersService.registerLocal( i18n, createUserDto, metadata );
-    const decodedRt = this.jwtService.decode( user.meta.refreshToken );
+    const decodedRt = this.jwtService.decode( user.refreshToken );
 
     res.cookie(
       Tokens.REFRESH_TOKEN,
-      user.meta.refreshToken,
+      user.refreshToken,
       {
         signed: true,
         httpOnly: true,
@@ -86,22 +90,25 @@ export class UsersController {
         expires: new Date( parseInt( decodedRt[ 'exp' ] ) * 1000 )
       } );
 
-    return { ...user.data, accessToken: user.meta.accessToken };
+    ObjectUtils.adjustEntityMetaResultByLang( user, this.defaultLangLocaleName, i18n.lang );
+
+    return { ...user, accessToken: user.accessToken };
   }
 
   // Refresh Tokens
   @UseGuards( RtAuthGuard )
   @Get( 'users/refresh-tokens' )
-  @Serialize( UserDto )
+  @Serialize( LoginRegisterDto )
   async refreshTokens (
     @CurrentUser() user: IRtStrategyUser,
+    @I18n() i18n: I18nContext,
     @Res( { passthrough: true } ) res: Response ): Promise<IControllerUserRefreshTokensResult> {
     const result = await this.usersService.refreshTokens( user.refreshToken );
-    const decodedRt = this.jwtService.decode( result.meta.refreshToken );
+    const decodedRt = this.jwtService.decode( result.refreshToken );
 
     res.cookie(
       Tokens.REFRESH_TOKEN,
-      result.meta.refreshToken,
+      result.refreshToken,
       {
         signed: true,
         httpOnly: true,
@@ -110,13 +117,13 @@ export class UsersController {
         expires: new Date( parseInt( decodedRt[ 'exp' ] ) * 1000 )
       } );
 
-    return { ...result.data, accessToken: result.meta.accessToken };
+    ObjectUtils.adjustEntityMetaResultByLang( result, this.defaultLangLocaleName, i18n.lang );
+    return { ...result, accessToken: result.accessToken };
   }
 
   // Logout
   @Get( 'users/logout' )
   @UseGuards( JwtAuthGuard )
-  @Serialize( UserDto )
   logout ( @Res( { passthrough: true } ) res: Response ): {} {
     res.clearCookie( Tokens.REFRESH_TOKEN );
     return {};
@@ -126,21 +133,27 @@ export class UsersController {
   @Get( 'users/profile' )
   @UseGuards( JwtAuthGuard )
   @Serialize( UserDto )
-  viewProfile ( @CurrentUser() user: IJwtStrategyUser, @I18n() i18n: I18nContext ): Promise<User> {
-    return this.usersService.findOne( user.userId, i18n );
+  async viewProfile ( @CurrentUser() user: IJwtStrategyUser, @I18n() i18n: I18nContext ): Promise<User> {
+    const profile = await this.usersService.findOne( user.userId, i18n );
+    ObjectUtils.adjustEntityMetaResultByLang( profile, this.defaultLangLocaleName, i18n.lang );
+    return profile;
   }
 
   // Edit Profile
   @Post( 'users/profile' )
   @UseGuards( JwtAuthGuard )
   @Serialize( UserDto )
-  editProfile (
+  async editProfile (
     @Body() body: UpdateUserDto,
     @CurrentUser() user: IJwtStrategyUser,
     @I18n() i18n: I18nContext,
     @Metadata() metadata: IMetadataDecorator
   ): Promise<User> {
-    return this.usersService.update( i18n, user.userId, body, metadata );
+    await this.usersService.updateMeta( body.metadata.id, body.metadata, i18n, metadata );
+    const profileData = await this.usersService.update( i18n, user.userId, body.data, metadata );
+
+    ObjectUtils.adjustEntityMetaResultByLang( profileData, this.defaultLangLocaleName, i18n.lang );
+    return profileData;
   }
 
   /************************ */
@@ -151,7 +164,7 @@ export class UsersController {
   @Get( 'admin/users' )
   @UseGuards( JwtAuthGuard, PermissionsGuard )
   @RequirePermission( PermissionsEnum.ADMIN, PermissionsEnum.USER_READ )
-  async adminFindAll ( @Query() query: UsersListQueryDto ) {
+  adminFindAll ( @Query() query: UsersListQueryDto, @I18n() i18n: I18nContext ): Promise<IListResultGenerator<User>> {
     return this.usersService.findAll( query );
   }
 
@@ -170,7 +183,7 @@ export class UsersController {
   addMeta (
     @I18n() i18n: I18nContext,
     @Param( 'userId' ) userId: string,
-    @Body() body: AddMetaDto,
+    @Body() body: AdminAddMetaDto,
     @Metadata() metadata: IMetadataDecorator ): Promise<UserMeta> {
     return this.usersService.addMeta( userId, body, i18n, metadata );
   }
@@ -186,6 +199,31 @@ export class UsersController {
     @Metadata() metadata: IMetadataDecorator
   ): Promise<User> {
     return this.usersService.update( i18n, id, body, metadata );
+  }
+
+  // Edit User Meta
+  @Patch( 'admin/users/update-meta/:id' )
+  @UseGuards( JwtAuthGuard, PermissionsGuard )
+  @RequirePermission( PermissionsEnum.ADMIN, PermissionsEnum.USER_EDIT )
+  adminUpdateUserMeta (
+    @I18n() i18n: I18nContext,
+    @Param( 'id' ) id: string,
+    @Body() body: UpdateMetaDto,
+    @Metadata() metadata: IMetadataDecorator
+  ): Promise<UserMeta> {
+    return this.usersService.updateMeta( id, body, i18n, metadata );
+  }
+
+  // Edit User Claims
+  @Patch( 'admin/users/update-claims/:id' )
+  @UseGuards( JwtAuthGuard, PermissionsGuard )
+  @RequirePermission( PermissionsEnum.ADMIN, PermissionsEnum.USER_EDIT )
+  adminUpdateUserClaims (
+    @I18n() i18n: I18nContext,
+    @Param( 'id' ) id: string,
+    @Body() body: UpdateUserClaimsDto,
+  ): Promise<User> {
+    return this.usersService.updateUserClaims( id, body, i18n );
   }
 
   // Soft Remove User
