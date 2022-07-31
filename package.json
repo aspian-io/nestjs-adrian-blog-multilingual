@@ -1,5 +1,5 @@
 {
-  "name": "adrian-blog",
+  "name": "adrian-blog-multilingual",
   "version": "0.0.1",
   "description": "A multilingual blog made by using NestJS, TypeORM, PostgreSQL, Redis and Passport for authentication and authorization.",
   "author": "Omid Rouhani",
